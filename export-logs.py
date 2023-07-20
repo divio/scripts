@@ -3,6 +3,7 @@
 import os
 import requests
 import urllib.parse
+import argparse
 from dotenv import load_dotenv
 
 # Load environment variables from .env-local file
@@ -17,11 +18,19 @@ headers = {"Authorization": f"Token {api_token}"}
 # API-endpoint for environments
 ENV_URL = "https://api.divio.com/apps/v3/environments/"
 
-# Customer-provided values for the script
-from_ts = "YYYY-MM-DDThh:mm"  # Replace with desired start date and time
-to_ts = "YYYY-MM-DDThh:mm"  # Replace with desired end date and time
-env_slug = ""  # Replace with the environment slug (e.g., "live" or "test")
-app_uuid = ""  # Replace with the application UUID
+# Parse command line arguments
+parser = argparse.ArgumentParser(description="Export and display logs from a specified Divio environment.")
+parser.add_argument("from_ts", type=str, help="Start date and time (YYYY-MM-DDThh:mm)")
+parser.add_argument("to_ts", type=str, help="End date and time (YYYY-MM-DDThh:mm)")
+parser.add_argument("env_slug", type=str, help="Environment slug (e.g., 'live' or 'test')")
+parser.add_argument("app_uuid", type=str, help="Application UUID")
+
+# Get command line arguments
+args = parser.parse_args()
+from_ts = args.from_ts
+to_ts = args.to_ts
+env_slug = args.env_slug
+app_uuid = args.app_uuid
 
 # Function to get the environment UUID for the given environment slug
 def get_env_uuid(env_slug, app_uuid):
