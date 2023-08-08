@@ -4,16 +4,6 @@ import os
 import requests
 import urllib.parse
 import argparse
-from dotenv import load_dotenv
-
-# Load environment variables from .env-local file
-load_dotenv('.env-local')
-
-# Access the API token, stored in the .env-local file as API_TOKEN
-api_token = os.getenv('API_TOKEN')
-
-# Defining authentication headers
-headers = {"Authorization": f"Token {api_token}"}
 
 # API-endpoint for environments
 ENV_URL = "https://api.divio.com/apps/v3/environments/"
@@ -24,6 +14,7 @@ parser.add_argument("from_ts", type=str, help="Start date and time (YYYY-MM-DDTh
 parser.add_argument("to_ts", type=str, help="End date and time (YYYY-MM-DDThh:mm)")
 parser.add_argument("env_slug", type=str, help="Environment slug (e.g., 'live' or 'test')")
 parser.add_argument("app_uuid", type=str, help="Application UUID")
+parser.add_argument("api_token", type=str, help="API Token")
 
 # Get command line arguments
 args = parser.parse_args()
@@ -31,15 +22,33 @@ from_ts = args.from_ts
 to_ts = args.to_ts
 env_slug = args.env_slug
 app_uuid = args.app_uuid
+api_token = args.api_token
+
+# Function to define authentication headers
+def get_headers(api_token):
+    """
+    Constructs and returns the authentication headers using the provided API token.
+
+    Parameters:
+        api_token (str): The API token to be used for authentication.
+
+    Returns:
+        dict: The authentication headers.
+    """
+    return {"Authorization": f"Token {api_token}"}
+
+# Define authentication headers using the provided API token
+headers = get_headers(api_token)
 
 # Function to get the environment UUID for the given environment slug
-def get_env_uuid(env_slug, app_uuid):
+def get_env_uuid(env_slug, app_uuid, headers):
     """
     Retrieves the environment UUID for the given environment slug and application UUID.
 
     Parameters:
         env_slug (str): The slug of the environment (e.g., "live" or "test").
         app_uuid (str): The UUID of the application.
+        headers (dict): Authentication headers.
 
     Returns:
         str: The UUID of the environment, or None if not found.
@@ -58,7 +67,7 @@ def get_env_uuid(env_slug, app_uuid):
     return None
 
 # Get the environment UUID for the given environment slug
-env_uuid = get_env_uuid(env_slug, app_uuid)
+env_uuid = get_env_uuid(env_slug, app_uuid, headers)
 
 # Function to truncate microseconds from a timestamp
 def truncate_microseconds(timestamp):
@@ -76,7 +85,7 @@ def truncate_microseconds(timestamp):
     return timestamp
 
 # Function to export and display logs of a given environment
-def get_all_logs(env_uuid):
+def get_all_logs(env_uuid, headers):
     """
     Retrieves and displays logs from a specified environment for a given range of date and time.
 
@@ -87,6 +96,7 @@ def get_all_logs(env_uuid):
 
     Parameters:
         env_uuid (str): The UUID of the environment.
+        headers (dict): Authentication headers.
 
     Returns:
         None
@@ -133,4 +143,4 @@ def get_all_logs(env_uuid):
                 return
 
 # Call the function to retrieve and display logs and save them to a file
-get_all_logs(env_uuid)
+get_all_logs(env_uuid, headers)
