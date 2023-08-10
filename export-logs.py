@@ -1,20 +1,26 @@
 #!/usr/bin/env python3
 
-import os
 import requests
 import urllib.parse
 import argparse
 
+
 # API-endpoint for environments
 ENV_URL = "https://api.divio.com/apps/v3/environments/"
 
+
 # Parse command line arguments
-parser = argparse.ArgumentParser(description="Export and display logs from a specified Divio environment.")
+parser = argparse.ArgumentParser(
+    description="Export and display logs from a specified Divio environment."
+)
 parser.add_argument("from_ts", type=str, help="Start date and time (YYYY-MM-DDThh:mm)")
 parser.add_argument("to_ts", type=str, help="End date and time (YYYY-MM-DDThh:mm)")
-parser.add_argument("env_slug", type=str, help="Environment slug (e.g., 'live' or 'test')")
+parser.add_argument(
+    "env_slug", type=str, help="Environment slug (e.g., 'live' or 'test')"
+)
 parser.add_argument("app_uuid", type=str, help="Application UUID")
 parser.add_argument("api_token", type=str, help="API Token")
+
 
 # Get command line arguments
 args = parser.parse_args()
@@ -23,6 +29,7 @@ to_ts = args.to_ts
 env_slug = args.env_slug
 app_uuid = args.app_uuid
 api_token = args.api_token
+
 
 # Function to define authentication headers
 def get_headers(api_token):
@@ -37,8 +44,10 @@ def get_headers(api_token):
     """
     return {"Authorization": f"Token {api_token}"}
 
+
 # Define authentication headers using the provided API token
 headers = get_headers(api_token)
+
 
 # Function to get the environment UUID for the given environment slug
 def get_env_uuid(env_slug, app_uuid, headers):
@@ -66,8 +75,10 @@ def get_env_uuid(env_slug, app_uuid, headers):
 
     return None
 
+
 # Get the environment UUID for the given environment slug
 env_uuid = get_env_uuid(env_slug, app_uuid, headers)
+
 
 # Function to truncate microseconds from a timestamp
 def truncate_microseconds(timestamp):
@@ -81,15 +92,17 @@ def truncate_microseconds(timestamp):
         str: The truncated timestamp without microseconds (up to milliseconds precision).
     """
     if "." in timestamp:
-        return timestamp[:timestamp.index(".") + 3]  # Truncate to two decimal places
+        return timestamp[: timestamp.index(".") + 3]  # Truncate to two decimal places
     return timestamp
+
 
 # Function to export and display logs of a given environment
 def get_all_logs(env_uuid, headers):
     """
     Retrieves and displays logs from a specified environment for a given range of date and time.
 
-    The function constructs the URL with the specified range of date and time and queries the Divio API to fetch the logs.
+    The function constructs the URL with the specified range of date and time and queries the Divio API
+    to fetch the logs.
 
     The logs are displayed in reverse chronological order, printing each log's timestamp and message.
     The function paginates through the log data to fetch all the available logs.
@@ -104,8 +117,8 @@ def get_all_logs(env_uuid, headers):
 
     # Construct the URL with query parameters
     logs_params = {
-        'from_ts': from_ts,
-        'to_ts': to_ts,
+        "from_ts": from_ts,
+        "to_ts": to_ts,
     }
     query_string = urllib.parse.urlencode(logs_params)
     url = f"https://api.divio.com/apps/v3/environments/{env_uuid}/logs/?{query_string}"
@@ -113,7 +126,7 @@ def get_all_logs(env_uuid, headers):
     response = requests.get(url=url, headers=headers)
 
     # Open a file to save the logs (replace 'logs.txt' with your desired file name)
-    with open('logs.txt', 'w') as log_file:
+    with open("logs.txt", "w") as log_file:
 
         # Main loop to retrieve and display logs
         while True:
@@ -121,7 +134,7 @@ def get_all_logs(env_uuid, headers):
             data = response.json()
 
             # Check for any error messages in the response
-            if not "results" in data:
+            if "results" not in data:
                 print(data)
 
             # Print each log entry in reverse chronological order and save to the file
@@ -129,7 +142,7 @@ def get_all_logs(env_uuid, headers):
                 # Truncate the microseconds part of the timestamp
                 timestamp = truncate_microseconds(line["timestamp"])
                 log_entry = f"{timestamp} - {line['message']}\n"
-                print(log_entry, end='')  # Print the log entry without a newline
+                print(log_entry, end="")  # Print the log entry without a newline
                 log_file.write(log_entry)  # Write the log entry to the file
 
             # Check if there are more log entries in the previous page
@@ -141,6 +154,7 @@ def get_all_logs(env_uuid, headers):
             else:
                 # End the loop if there are no more log entries
                 return
+
 
 # Call the function to retrieve and display logs and save them to a file
 get_all_logs(env_uuid, headers)
