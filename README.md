@@ -13,6 +13,6 @@ Copy and run the `export-logs.py` script with the following command, replacing w
 
 `python export-logs.py "2023-08-13T00:00" "2023-08-13T23:00" "live" "APPLICATION_UUID" "YOUR_API_TOKEN"`
 
-For detailed instructions on how to use the export-logs.py script, please refer to the How to Export Logs guide in the documentation
+For detailed instructions on how to use the `export-logs.py` script, please refer to the How to Export Logs guide in the documentation
  https://docs.divio.com/en/latest/how-to/export-logs/. 
 
