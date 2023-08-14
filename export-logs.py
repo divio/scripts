@@ -97,7 +97,7 @@ def truncate_microseconds(timestamp):
 
 
 # Function to export and display logs of a given environment
-def get_all_logs(env_uuid, headers):
+def get_logs(env_uuid, headers):
     """
     Retrieves and displays logs from a specified environment for a given range of date and time.
 
@@ -157,4 +157,4 @@ def get_all_logs(env_uuid, headers):
 
 
 # Call the function to retrieve and display logs and save them to a file
-get_all_logs(env_uuid, headers)
+get_logs(env_uuid, headers)
