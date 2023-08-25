@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import sys
+import argparse
 import requests
 from time import sleep
 import git  # Import the GitPython library
@@ -27,17 +27,6 @@ def create_and_push_branch(repo, branch_name):
         repo.git.checkout(new_branch)
         print(f"Branch '{branch_name}' created and switched to.")
         repo.git.push("origin", new_branch.name)
-
-# # Check if an environment with the given slug exists
-# def environment_exists(app_uuid, env_slug, headers):
-#     env_params = {"application": app_uuid}
-#     env_response = requests.get(url=ENV_URL, params=env_params, headers=headers)
-    
-#     for env in env_response.json()["results"]:
-#         if env["slug"] == env_slug:
-#             return True
-    
-#     return False
 
 # Get the environment uuid for the given environment slug
 def get_environment_uuid(app_uuid, env_slug, headers):
@@ -98,14 +87,20 @@ def get_deployment_status(deploy_uuid, headers):
         sleep(SLEEP_INTERVAL)
 
 def main():
-    # Check the number of command-line arguments to ensure the minimum required arguments are provided
-    if len(sys.argv) < 3:
-        print("Usage: script.py <APPLICATION_UUID> <API_TOKEN> [<ENVIRONMENT_SLUG>] [<BRANCH_NAME>]")
-        sys.exit(1)
+    
+    parser = argparse.ArgumentParser(description="Deploy script for Divio application")
+    parser.add_argument("app_uuid", help="Application UUID")
+    parser.add_argument("api_token", help="API Token")
+    parser.add_argument("--env_slug", help="Environment slug", default="test")
+    parser.add_argument("--branch", help="Branch name")
+    
+    args = parser.parse_args()
     
     # Parse command-line arguments
-    app_uuid = sys.argv[1]
-    api_token = sys.argv[2]
+    app_uuid = args.app_uuid
+    api_token = args.api_token
+    env_slug = args.env_slug
+    branch = args.branch
     
     # Define constants and configuration options
     repository_path = "/Users/mebzete/divioprojects/github-actions"  # local repository path
@@ -113,14 +108,11 @@ def main():
     default_env_slug = "test"  # Default environment slug to deploy, if env_slug is not provided
     source_env_slug = "live" # Source environment slug for the environment to copy from
     
-    # Check if an environment slug argument is provided (third argument) and parse env_slug accordingly
-    if len(sys.argv) >= 4:
-        env_slug = sys.argv[3]
+    # Check if an environment slug argument is provided
+    if env_slug:
     
-        # Check if a branch argument is provided (fourth argument) and parse branch accordingly
-        if len(sys.argv) >= 5:
-            branch = sys.argv[4] 
-        
+        # Check if a branch argument is provided
+        if branch:
             # Initialize the Git repository
             repo = git.Repo(repository_path)
             
@@ -138,7 +130,7 @@ def main():
                 # Check if the UUID is None, the source environment could not be found, so print an error message and exit the script
                 if source_env_uuid is None:
                     print(f"Could not find the source environment {source_env_slug} to copy from.")
-                    sys.exit(1)
+                    exit(1)
                 
                 # Copy the source environment to a new environment
                 new_env_uuid = copy_environment(app_uuid, source_env_uuid, env_slug, headers)
@@ -158,7 +150,7 @@ def main():
                 # An environment with the given slug exists, and a branch is also provided;
                 # Exit the script to prevent overwriting the existing environment's branch.
                 print(f"Environment with {env_slug} exists. Please do not provide a branch argument")
-                sys.exit(1)
+                exit(1)
             
         else:
             # A branch argument is not provided 
@@ -174,7 +166,7 @@ def main():
                 # Check if the UUID is None, the source environment could not be found, so print an error message and exit the script
                 if source_env_uuid is None:
                     print(f"Could not find the source environment {source_env_slug} to copy from.")
-                    sys.exit(1)
+                    exit(1)
                 
                 # Copy the source environment to a new environment
                 new_env_uuid = copy_environment(app_uuid, source_env_uuid, env_slug, headers)
@@ -207,7 +199,7 @@ def main():
         # Check if the UUID is None, the default environment could not be found, so print an error message and exit the script
         if default_env_uuid is None:
             print(f"Could not find the default environment {default_env_slug}")
-            sys.exit(1)
+            exit(1)
             
         # Get the UUID of the default environment using the application uuid and the default environment slug 
         default_env_uuid = get_environment_uuid(app_uuid, default_env_slug, headers)
