@@ -98,7 +98,6 @@ def deploy_with_branch(repo, app_uuid, env_slug, source_env_slug, branch, header
             exit(1)
         
         new_env_uuid = copy_environment(app_uuid, source_env_uuid, env_slug, headers)
-        print("New environment UUID:", new_env_uuid)  # Add this line
         update_environment_branch(new_env_uuid, branch, headers)
         deploy_uuid = trigger_deployment(new_env_uuid, headers)
     else:
