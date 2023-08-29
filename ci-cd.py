@@ -86,14 +86,62 @@ def get_deployment_status(deploy_uuid, headers):
         print("Deployment", status)
         sleep(SLEEP_INTERVAL)
 
-def main():
+
+def deploy_with_branch(repo, app_uuid, env_slug, source_env_slug, branch, headers):
+    create_and_push_branch(repo, branch)
+    env_uuid = get_environment_uuid(app_uuid, env_slug, headers)
     
+    if env_uuid is None:
+        source_env_uuid = get_environment_uuid(app_uuid, source_env_slug, headers)
+        if source_env_uuid is None:
+            print(f"Could not find the source environment {source_env_slug} to copy from.")
+            exit(1)
+        
+        new_env_uuid = copy_environment(app_uuid, source_env_uuid, env_slug, headers)
+        print("New environment UUID:", new_env_uuid)  # Add this line
+        update_environment_branch(new_env_uuid, branch, headers)
+        deploy_uuid = trigger_deployment(new_env_uuid, headers)
+    else:
+        print(f"Environment with {env_slug} exists. Please do not provide a branch argument")
+        exit(1)
+    
+    return deploy_uuid
+
+def deploy_without_branch(app_uuid, env_slug, source_env_slug, headers):
+    env_uuid = get_environment_uuid(app_uuid, env_slug, headers)
+    
+    if env_uuid is None:
+        source_env_uuid = get_environment_uuid(app_uuid, source_env_slug, headers)
+        if source_env_uuid is None:
+            print(f"Could not find the source environment {source_env_slug} to copy from.")
+            exit(1)
+        
+        new_env_uuid = copy_environment(app_uuid, source_env_uuid, env_slug, headers)
+        deploy_uuid = trigger_deployment(new_env_uuid, headers)
+    else:
+        deploy_uuid = trigger_deployment(env_uuid, headers)
+    
+    return deploy_uuid
+
+def deploy_default_environment(app_uuid, env_slug, headers):
+    default_env_uuid = get_environment_uuid(app_uuid, env_slug, headers)
+    
+    if default_env_uuid is None:
+        print(f"Could not find the default environment {env_slug}")
+        exit(1)
+    
+    deploy_uuid = trigger_deployment(env_uuid, headers)
+    return deploy_uuid
+
+def main():
     parser = argparse.ArgumentParser(description="Deploy script for Divio application")
     parser.add_argument("app_uuid", help="Application UUID")
     parser.add_argument("api_token", help="API Token")
     parser.add_argument("--env_slug", help="Environment slug", default="test")
     parser.add_argument("--branch", help="Branch name")
-    
+    parser.add_argument("--repository_path", help="Local repository path")
+    parser.add_argument("--source_env_slug", help="Source environment slug for copying", default="live")
+
     args = parser.parse_args()
     
     # Parse command-line arguments
@@ -101,116 +149,24 @@ def main():
     api_token = args.api_token
     env_slug = args.env_slug
     branch = args.branch
+    repository_path = args.repository_path
+    source_env_slug = args.source_env_slug
     
-    # Define constants and configuration options
-    repository_path = "/Users/mebzete/divioprojects/github-actions"  # local repository path
     headers = {"Authorization": f"Token {api_token}"}
-    default_env_slug = "test"  # Default environment slug to deploy, if env_slug is not provided
-    source_env_slug = "live" # Source environment slug for the environment to copy from
     
-    # Check if an environment slug argument is provided
+    deploy_uuid = None
+    
     if env_slug:
-    
-        # Check if a branch argument is provided
         if branch:
-            # Initialize the Git repository
             repo = git.Repo(repository_path)
-            
-            # Create and push the specified branch
-            create_and_push_branch(repo, branch)
-            
-            # Get the UUID of the environment using the provided environment slug
-            env_uuid = get_environment_uuid(app_uuid, env_slug, headers)
-            
-            if env_uuid is None:
-                # The environment with the given slug does not exist,
-                # Get the UUID of the source environment using the application UUID and its slug
-                source_env_uuid = get_environment_uuid(app_uuid, source_env_slug, headers)
-                
-                # Check if the UUID is None, the source environment could not be found, so print an error message and exit the script
-                if source_env_uuid is None:
-                    print(f"Could not find the source environment {source_env_slug} to copy from.")
-                    exit(1)
-                
-                # Copy the source environment to a new environment
-                new_env_uuid = copy_environment(app_uuid, source_env_uuid, env_slug, headers)
-                
-                # Update the environment to switch to the newly created branch
-                update_environment_branch(new_env_uuid, branch, headers)
-                
-                # Trigger deployment for the updated environment
-                deploy_uuid = trigger_deployment(new_env_uuid, headers)
-                print(f"Deployment triggered with UUID: {deploy_uuid}")
-                
-                # Get the deployment status
-                deployment_status = get_deployment_status(deploy_uuid, headers)
-                print(deployment_status)
-            
-            else:
-                # An environment with the given slug exists, and a branch is also provided;
-                # Exit the script to prevent overwriting the existing environment's branch.
-                print(f"Environment with {env_slug} exists. Please do not provide a branch argument")
-                exit(1)
-            
+            deploy_uuid = deploy_with_branch(repo, app_uuid, env_slug, source_env_slug, branch, headers)
         else:
-            # A branch argument is not provided 
-            
-            # Get the UUID of the environment using the provided environment slug
-            env_uuid = get_environment_uuid(app_uuid, env_slug, headers)
-            
-            if env_uuid is None:
-                # The environment with the given slug does not exist,
-                # Get the UUID of the source environment using the application UUID and its slug
-                source_env_uuid = get_environment_uuid(app_uuid, source_env_slug, headers)
-                
-                # Check if the UUID is None, the source environment could not be found, so print an error message and exit the script
-                if source_env_uuid is None:
-                    print(f"Could not find the source environment {source_env_slug} to copy from.")
-                    exit(1)
-                
-                # Copy the source environment to a new environment
-                new_env_uuid = copy_environment(app_uuid, source_env_uuid, env_slug, headers)
-                
-                # Trigger deployment for the updated environment
-                deploy_uuid = trigger_deployment(new_env_uuid, headers)
-                print(f"Deployment triggered with UUID: {deploy_uuid}")
-                
-                # Get the deployment status
-                deployment_status = get_deployment_status(deploy_uuid, headers)
-                print(deployment_status)
-            
-            else:
-                # An environment with the given slug exists, and a branch is not provided;
-            
-                # deploy the environment with given uuid
-                deploy_uuid = trigger_deployment(env_uuid, headers)
-                print(f"Deployment triggered with UUID: {deploy_uuid}")
-                
-                # Get the deployment status
-                deployment_status = get_deployment_status(deploy_uuid, headers)
-                print(deployment_status)
-        
+            deploy_uuid = deploy_without_branch(app_uuid, env_slug, source_env_slug, headers)
     else:
-        # Only application UUID and API token are given
-        
-        # Get the UUID of the default environment using the application UUID
-        default_env_uuid = get_environment_uuid(app_uuid, default_env_slug, headers)
-        
-        # Check if the UUID is None, the default environment could not be found, so print an error message and exit the script
-        if default_env_uuid is None:
-            print(f"Could not find the default environment {default_env_slug}")
-            exit(1)
-            
-        # Get the UUID of the default environment using the application uuid and the default environment slug 
-        default_env_uuid = get_environment_uuid(app_uuid, default_env_slug, headers)
-        
-        # Trigger deployment for the newly copied environment
-        deploy_uuid = trigger_deployment(default_env_uuid, headers)
-        print(f"Deployment triggered with UUID: {deploy_uuid}")
-        
-        # Get the deployment status
-        deployment_status = get_deployment_status(deploy_uuid, headers)
-        print(deployment_status)
+        deploy_uuid = deploy_default_environment(app_uuid, env_slug, headers)
+    
+    deployment_status = get_deployment_status(deploy_uuid, headers)
+    print(deployment_status)
 
 if __name__ == "__main__":
     main()
