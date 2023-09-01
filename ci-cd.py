@@ -9,7 +9,6 @@ import git  # Import the GitPython library
 ENV_URL = "https://api.divio.com/apps/v3/environments/"
 DEPLOY_URL = "https://api.divio.com/apps/v3/deployments/"
 SLEEP_INTERVAL = 5  # Sleep interval between deployment status checks
-MAX_ENVIRONMENTS = 5  # Maximum number of allowed environments
 
 # Check if a branch exists in the Git repository
 def branch_exists(repo, branch_name):
@@ -52,19 +51,6 @@ def environment_exists(app_uuid, env_slug, headers):
 
     return False  # No matching environment slug was found
 
-# Get the number of existing environments for the specified application
-def get_num_environments(app_uuid, headers):
-    # Prepare parameters for the API request
-    env_params = {"application": app_uuid}
-
-    # Send a GET request to retrieve the list of environments for the application
-    env_response = requests.get(url=ENV_URL, params=env_params, headers=headers)
-
-    # Count and return the number of environments in the list
-    num_environments = len(env_response.json()["results"])
-    return num_environments
-
-
 # Get the environment uuid for the given environment slug
 def get_environment_uuid(app_uuid, env_slug, headers):
     env_params = {"application": app_uuid}
@@ -83,6 +69,13 @@ def copy_environment(app_uuid, source_env_uuid, env_slug, headers):
 
     env_data = {"new_slug": env_slug}
     copy_response = requests.post(url=copy_url, data=env_data, headers=headers)
+
+    # Check if the limit of the number of environments is reached
+    if "non_field_errors" in copy_response.json():
+        if "Can not add another Environment." in copy_response.json()["non_field_errors"]:
+            print("Error: Maximum number of environments reached.")
+            exit(1)
+            
     new_env_uuid = copy_response.json()["uuid"]
     return new_env_uuid
 
@@ -208,37 +201,20 @@ def main():
     # Parse the provided command-line arguments
     args = parser.parse_args()
 
-    # Extract parsed arguments into variables for easier access
-    app_uuid = args.app_uuid
-    api_token = args.api_token
-    env_slug = args.env_slug
-    branch = args.branch
-    repository_path = args.repository_path
-    source_env_slug = args.source_env_slug
-
     # Define headers for API requests using the provided API token
-    headers = {"Authorization": f"Token {api_token}"}
+    headers = {"Authorization": f"Token {args.api_token}"}
 
     deploy_uuid = None
 
-    # Check if the maximum number of environments has been reached for new environment creation
-    if env_slug and not environment_exists(app_uuid, env_slug, headers):
-        num_environments = get_num_environments(app_uuid, headers)
-        if num_environments >= MAX_ENVIRONMENTS:
-            print(
-                f"Maximum number of environments ({MAX_ENVIRONMENTS}) reached. Cannot create more environments."
-            )
-            exit(1)
-
     # Check if the environment slug is provided
-    if env_slug:
+    if args.env_slug:
         deploy_uuid = deploy_environment(
-            app_uuid, env_slug, branch, repository_path, source_env_slug, headers
+            args.app_uuid, args.env_slug, args.branch, args.repository_path, args.source_env_slug, headers
         )
 
     else:
         # Deploy default environment
-        deploy_uuid = deploy_default_environment(app_uuid, env_slug, headers)
+        deploy_uuid = deploy_default_environment(args.app_uuid, args.env_slug, headers)
 
     # Get and print the deployment status
     deployment_status = get_deployment_status(deploy_uuid, headers)
