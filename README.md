@@ -2,7 +2,7 @@
 
 A collection of helpful scripts for automating tasks and enhancing workflows on the Divio cloud platform.
 
-## Export Logs Script
+## Export logs script
 
 The `export-logs.py` script in this repository allows you to retrieve and display logs from a specified Divio environment for a given
  date range. It uses the Divio API to fetch the logs and displays them on the console and saves them to a text file for easy search 
@@ -44,4 +44,4 @@ Replace the placeholders with the appropriate values:
 * `REPO_PATH` (optional): The local repository path (required when creating a new branch).
 * `SOURCE_ENV_SLUG` (optional): The source environment slug for copying (default: "live").
 
-Refer to the [Simplify your Divio application deployment with a Python script](https://docs.divio.com/en/latest/how-to/ci-cd/) for detailed instructions.
+Refer to the [Simplify your Divio application deployment with a Python script](https://docs.divio.com/en/latest/how-to/ci-cd/) for detailed instructions on how to use the `ci-cd.py` script.
