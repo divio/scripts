@@ -30,7 +30,17 @@ env_slug = args.env_slug
 app_uuid = args.app_uuid
 api_token = args.api_token
 
+class NullAuth(requests.auth.AuthBase):
+    '''force requests to ignore the ``.netrc``
 
+    Use with::
+
+        requests.get(url, auth=NullAuth())
+    '''
+
+    def __call__(self, r):
+        return r
+    
 # Function to define authentication headers
 def get_headers(api_token):
     """
@@ -66,7 +76,7 @@ def get_env_uuid(env_slug, app_uuid, headers):
     env_params = {"application": app_uuid}
 
     # Listing the environments of the given application
-    env_response = requests.get(url=ENV_URL, params=env_params, headers=headers)
+    env_response = requests.get(url=ENV_URL, auth=NullAuth(), params=env_params, headers=headers)
 
     # Iterating through the list of environments to get the uuid with the given environment slug
     for env in env_response.json()["results"]:
@@ -123,7 +133,7 @@ def get_logs(env_uuid, headers):
     query_string = urllib.parse.urlencode(logs_params)
     url = f"https://api.divio.com/apps/v3/environments/{env_uuid}/logs/?{query_string}"
 
-    response = requests.get(url=url, headers=headers)
+    response = requests.get(url=url, auth=NullAuth(), headers=headers)
 
     # Open a file to save the logs (replace 'logs.txt' with your desired file name)
     with open("logs.txt", "w") as log_file:
@@ -150,7 +160,7 @@ def get_logs(env_uuid, headers):
                 # Update the URL to fetch the previous page
                 url = data["previous"]
                 # Fetch the log data from the updated URL
-                response = requests.get(url=url, headers=headers)
+                response = requests.get(url=url, auth=NullAuth(), headers=headers)
             else:
                 # End the loop if there are no more log entries
                 return
