@@ -26,7 +26,7 @@ SMTP_PORT = int(os.getenv('SMTP_PORT'))
 
 def get_latest_invoice_id():
     # Replace this with actual logic to get the latest invoice ID
-    response = requests.get('BASE_API_URL', headers={'Authorization': f'Token {API_KEY}'})
+    response = requests.get('API_URL', headers={'Authorization': f'Token {API_KEY}'})
     if response.status_code == 200:
         invoices = response.json()
         latest_invoice_id = invoices[0]['id']  # Assuming the latest invoice is the first one
@@ -36,7 +36,7 @@ def get_latest_invoice_id():
 
 
 def download_invoice(invoice_id):
-    api_url = f"{BASE_API_URL}{invoice_id}.pdf"
+    api_url = f"{API_URL}{invoice_id}.pdf"
     headers = {'Authorization': f'Token {API_KEY}'}
     response = requests.get(api_url, headers=headers, stream=True)
     if response.status_code == 200:
