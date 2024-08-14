@@ -13,8 +13,7 @@ import requests
 load_dotenv()
 
 # Configuration from environment variables
-INVOICE_ID = os.getenv('INVOICE_ID')
-API_URL = os.getenv('API_URL').replace('$INVOICE_ID', INVOICE_ID)
+API_URL = os.getenv('BASE_API_URL')
 API_KEY = os.getenv('API_KEY')
 DOWNLOAD_PATH = os.getenv('DOWNLOAD_PATH')
 EMAIL_SUBJECT = os.getenv('EMAIL_SUBJECT')
@@ -25,9 +24,21 @@ SENDER_PASSWORD = os.getenv('SENDER_PASSWORD')
 SMTP_SERVER = os.getenv('SMTP_SERVER')
 SMTP_PORT = int(os.getenv('SMTP_PORT'))
 
-def download_invoice():
+def get_latest_invoice_id():
+    # Replace this with actual logic to get the latest invoice ID
+    response = requests.get('BASE_API_URL', headers={'Authorization': f'Token {API_KEY}'})
+    if response.status_code == 200:
+        invoices = response.json()
+        latest_invoice_id = invoices[0]['id']  # Assuming the latest invoice is the first one
+        return latest_invoice_id
+    else:
+        raise Exception(f"Failed to retrieve invoices. Status code: {response.status_code}")
+
+
+def download_invoice(invoice_id):
+    api_url = f"{BASE_API_URL}{invoice_id}.pdf"
     headers = {'Authorization': f'Token {API_KEY}'}
-    response = requests.get(API_URL, headers=headers, stream=True)
+    response = requests.get(api_url, headers=headers, stream=True)
     if response.status_code == 200:
         with open(DOWNLOAD_PATH, 'wb') as file:
             file.write(response.content)
@@ -69,5 +80,9 @@ def send_email(subject, body, to_email, attachment_file):
             print("Server connection was not established; no need to quit.")
 
 if __name__ == "__main__":
-    download_invoice()
-    send_email(EMAIL_SUBJECT, EMAIL_BODY, RECIPIENT_EMAIL, DOWNLOAD_PATH)
+    try:
+        latest_invoice_id = get_latest_invoice_id()
+        download_invoice(latest_invoice_id)
+        send_email(EMAIL_SUBJECT, EMAIL_BODY, RECIPIENT_EMAIL, DOWNLOAD_PATH)
+    except Exception as e:
+        print(f"Error: {e}")
