@@ -13,7 +13,6 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Configuration from environment variables
-api_url = os.getenv('API_URL')
 api_key = os.getenv('API_KEY')
 headers = {'Authorization': f'Token {api_key}'}
 organisation_id = os.getenv('ORGANISATION_ID')
@@ -23,6 +22,8 @@ sender_email = os.getenv('SENDER_EMAIL')
 sender_password = os.getenv('SENDER_PASSWORD')
 smtp_server = os.getenv('SMTP_SERVER')
 smtp_port = int(os.getenv('SMTP_PORT'))
+
+api_url = 'https://api.divio.com/apps/v3/invoices/'
 
 # Ensure the download directory exists
 if not os.path.exists(download_dir):
@@ -46,35 +47,38 @@ def get_first_invoice():
     else:
         raise Exception(f"Failed to retrieve invoices. Status code: {response.status_code}")
 
-def download_invoice_html(receipt_url, invoice_id):
-    """Downloads the HTML invoice and saves it."""
-    response = session.get(receipt_url, allow_redirects=True)
+def download_invoice_pdf(receipt_url, invoice_id):
+    """Downloads the PDF invoice by appending '.pdf' to the receipt URL."""
+    pdf_url = f"{receipt_url}.pdf"  # Access the PDF by appending '.pdf' to the receipt URL
+    response = session.get(pdf_url, allow_redirects=True)
     
-    if response.status_code == 200 and 'text/html' in response.headers.get('Content-Type', ''):
-        filename = f"invoice_{invoice_id}.html"
+    if response.status_code == 200 and 'application/pdf' in response.headers.get('Content-Type', ''):
+        filename = f"invoice_{invoice_id}.pdf"
         filepath = os.path.join(download_dir, filename)
-        with open(filepath, 'w', encoding='utf-8') as file:
-            file.write(response.text)
-        print(f"Invoice {invoice_id} saved successfully as HTML: {filename}")
+        with open(filepath, 'wb') as file:  # Save the PDF in binary mode
+            file.write(response.content)
+        print(f"Invoice {invoice_id} saved successfully as PDF: {filename}")
         return filepath
     else:
-        raise Exception(f"Failed to download the invoice. Status code: {response.status_code}")
+        raise Exception(f"Failed to download the invoice. Status code: {response.status_code}, Content-Type: {response.headers.get('Content-Type')}")
 
 def send_email_with_attachment(subject, body, to_email, attachment_file):
-    """Sends an email with the invoice attached as HTML."""
+    """Sends an email with the invoice attached as PDF."""
     msg = MIMEMultipart()
     msg['From'] = sender_email
     msg['To'] = to_email
     msg['Subject'] = subject
 
-    # Attach email body
+    # Attach the email body
     msg.attach(MIMEText(body, 'plain'))
 
-    # Attach the HTML invoice file
-    with open(attachment_file, 'r', encoding='utf-8') as f:
-        html_attachment = MIMEText(f.read(), 'html')
-    html_attachment.add_header('Content-Disposition', f'attachment; filename={os.path.basename(attachment_file)}')
-    msg.attach(html_attachment)
+    # Attach the PDF invoice file
+    with open(attachment_file, 'rb') as f:  # Open the PDF in binary mode for attachment
+        part = MIMEBase('application', 'octet-stream')
+        part.set_payload(f.read())
+    encoders.encode_base64(part)
+    part.add_header('Content-Disposition', f'attachment; filename={os.path.basename(attachment_file)}')
+    msg.attach(part)
 
     # Send the email
     try:
@@ -90,16 +94,16 @@ if __name__ == "__main__":
     try:
         # Step 1: Get the first invoice
         first_invoice = get_first_invoice()
-        receipt_url = first_invoice.get('receipt')
+        receipt_url = first_invoice.get('receipt')  # Assuming the receipt contains the base URL
         invoice_id = first_invoice.get('number') or first_invoice.get('uuid')
 
-        # Step 2: Download the invoice HTML
-        html_file = download_invoice_html(receipt_url, invoice_id)
+        # Step 2: Download the invoice PDF from the modified URL
+        pdf_file = download_invoice_pdf(receipt_url, invoice_id)
 
-        # Step 3: Send the email with the attached HTML invoice
+        # Step 3: Send the email with the attached PDF invoice
         email_subject = f"Invoice {invoice_id}"
         email_body = f"Please find attached your invoice #{invoice_id}."
-        send_email_with_attachment(email_subject, email_body, recipient_email, html_file)
+        send_email_with_attachment(email_subject, email_body, recipient_email, pdf_file)
     
     except Exception as e:
         print(f"Error: {e}")
